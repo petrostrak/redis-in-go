@@ -1,2 +1,2 @@
-# redis-in-go
+## Redis in Go.
 Redis from scratch In Golang.
