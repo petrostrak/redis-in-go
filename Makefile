@@ -1,2 +1,5 @@
-run:
-	@go run main.go
+build:
+	@go build -o bin/redis-in-go .
+
+run: build
+	@./bin/redis-in-go
