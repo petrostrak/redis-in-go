@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -20,6 +19,7 @@ type Server struct {
 	ln          net.Listener
 	peers       map[*Peer]bool
 	addPeerChan chan *Peer
+	quit        chan struct{}
 }
 
 func NewServer(cfg Config) *Server {
@@ -31,6 +31,7 @@ func NewServer(cfg Config) *Server {
 		Config:      cfg,
 		peers:       make(map[*Peer]bool),
 		addPeerChan: make(chan *Peer),
+		quit:        make(chan struct{}),
 	}
 }
 
@@ -43,6 +44,8 @@ func (s *Server) Start() error {
 
 	go s.loop()
 
+	slog.Info("server running", "ListenAddr", s.ListenAddr)
+
 	return s.listen()
 }
 
@@ -51,8 +54,6 @@ func (s *Server) loop() {
 		select {
 		case peer := <-s.addPeerChan:
 			s.peers[peer] = true
-		default:
-			fmt.Println("default case")
 		}
 	}
 }
@@ -72,7 +73,11 @@ func (s *Server) handleConn(conn net.Conn) {
 	peer := NewPeer(conn)
 	s.addPeerChan <- peer
 
-	go peer.read()
+	slog.Info("new peer connected", "remoteAddr", conn.RemoteAddr().String())
+
+	if err := peer.read(); err != nil {
+		slog.Error("read error", "err", err, "remoteAddr", conn.RemoteAddr().String())
+	}
 }
 
 func main() {
