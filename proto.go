@@ -29,7 +29,6 @@ func parseCommand(msg string) (Commander, error) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Read %s\n", v.Type())
 
 		var cmd Commander
 		if v.Type() == resp.Array {
@@ -44,11 +43,9 @@ func parseCommand(msg string) (Commander, error) {
 						val: v.Array()[2].String(),
 					}
 					return cmd, nil
-				default:
 				}
-				fmt.Printf("%v\n", v)
 			}
 		}
 	}
-	return SetCommand{}, nil
+	return SetCommand{}, fmt.Errorf("invalid or unknown command: %s\n", msg)
 }

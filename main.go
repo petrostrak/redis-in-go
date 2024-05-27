@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -90,7 +89,16 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func (s *Server) handleRawMsg(msg []byte) error {
-	fmt.Println(string(msg))
+	cmd, err := parseCommand(string(msg))
+	if err != nil {
+		return err
+	}
+
+	switch v := cmd.(type) {
+	case SetCommand:
+		slog.Info("SET", "key", v.key, "value", v.val)
+	}
+
 	return nil
 }
 
