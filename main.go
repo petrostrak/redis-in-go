@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"net"
+	"time"
+
+	"github.com/petrostrak/redis-in-go/client"
 )
 
 const (
@@ -103,6 +107,17 @@ func (s *Server) handleRawMsg(msg []byte) error {
 }
 
 func main() {
-	server := NewServer(Config{})
-	log.Fatal(server.Start())
+	go func() {
+		server := NewServer(Config{})
+		log.Fatal(server.Start())
+	}()
+	time.Sleep(time.Second)
+
+	client := client.New("localhost:5001")
+
+	if err := client.Set(context.Background(), "petros", "trakadas"); err != nil {
+		slog.Error("error calling SET", "err", err)
+	}
+
+	select {}
 }
