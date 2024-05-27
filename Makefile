@@ -3,3 +3,6 @@ build:
 
 run: build
 	@./bin/redis-in-go
+
+test:
+	@go test -v ./...
