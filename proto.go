@@ -16,7 +16,7 @@ const (
 type Commander interface{}
 
 type SetCommand struct {
-	key, val string
+	key, val []byte
 }
 
 func parseCommand(msg string) (Commander, error) {
@@ -39,8 +39,8 @@ func parseCommand(msg string) (Commander, error) {
 						return nil, fmt.Errorf("invalid set command")
 					}
 					cmd = SetCommand{
-						key: v.Array()[1].String(),
-						val: v.Array()[2].String(),
+						key: v.Array()[1].Bytes(),
+						val: v.Array()[2].Bytes(),
 					}
 					return cmd, nil
 				}
