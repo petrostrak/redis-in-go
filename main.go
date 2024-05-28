@@ -88,8 +88,6 @@ func (s *Server) handleConn(conn net.Conn) {
 	peer := NewPeer(conn, s.msgChan)
 	s.addPeerChan <- peer
 
-	slog.Info("new peer connected", "remoteAddr", conn.RemoteAddr().String())
-
 	if err := peer.read(); err != nil {
 		slog.Error("read error", "err", err, "remoteAddr", conn.RemoteAddr().String())
 	}
