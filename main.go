@@ -102,6 +102,8 @@ func (s *Server) handleRawMsg(msg []byte) error {
 	switch v := cmd.(type) {
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
+		// case GetCommand:
+		// 	s.kv.Get(string(v.key))
 	}
 
 	return nil
