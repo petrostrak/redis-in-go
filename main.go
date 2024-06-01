@@ -19,13 +19,18 @@ type Config struct {
 	ListenAddr string
 }
 
+type Message struct {
+	data []byte
+	peer *Peer
+}
+
 type Server struct {
 	Config
 	ln          net.Listener
 	peers       map[*Peer]bool
 	addPeerChan chan *Peer
 	quit        chan struct{}
-	msgChan     chan []byte
+	msgChan     chan Message
 	kv          *KV
 }
 
@@ -39,7 +44,7 @@ func NewServer(cfg Config) *Server {
 		peers:       make(map[*Peer]bool),
 		addPeerChan: make(chan *Peer),
 		quit:        make(chan struct{}),
-		msgChan:     make(chan []byte),
+		msgChan:     make(chan Message),
 		kv:          NewKV(),
 	}
 }
@@ -61,8 +66,8 @@ func (s *Server) Start() error {
 func (s *Server) loop() {
 	for {
 		select {
-		case rawMsg := <-s.msgChan:
-			if err := s.handleRawMsg(rawMsg); err != nil {
+		case msg := <-s.msgChan:
+			if err := s.handleMsg(msg); err != nil {
 				slog.Info("raw msg error", "err", err)
 			}
 		case <-s.quit:
@@ -93,8 +98,8 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 }
 
-func (s *Server) handleRawMsg(msg []byte) error {
-	cmd, err := parseCommand(string(msg))
+func (s *Server) handleMsg(msg Message) error {
+	cmd, err := parseCommand(string(msg.data))
 	if err != nil {
 		return err
 	}
@@ -102,8 +107,15 @@ func (s *Server) handleRawMsg(msg []byte) error {
 	switch v := cmd.(type) {
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
-		// case GetCommand:
-		// 	s.kv.Get(string(v.key))
+	case GetCommand:
+		value, found := s.kv.Get(string(v.key))
+		if !found {
+			return fmt.Errorf("key not found")
+		}
+		_, err := msg.peer.Send(value)
+		if err != nil {
+			slog.Error("peer send error", "err", err)
+		}
 	}
 
 	return nil
