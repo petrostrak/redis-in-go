@@ -112,6 +112,7 @@ func (s *Server) handleMsg(msg Message) error {
 		if !found {
 			return fmt.Errorf("key not found")
 		}
+
 		_, err := msg.peer.Send(value)
 		if err != nil {
 			slog.Error("peer send error", "err", err)
@@ -131,10 +132,16 @@ func main() {
 
 	client := client.New("localhost:5001")
 
-	if err := client.Set(context.Background(), "petros", "trakadas"); err != nil {
-		slog.Error("error calling SET", "err", err)
-	}
+	for i := 0; i < 10; i++ {
+		if err := client.Set(context.Background(), fmt.Sprintf("first_name_%d", i), fmt.Sprintf("last_name_%d", i)); err != nil {
+			slog.Error("error calling SET", "err", err)
+		}
+		time.Sleep(time.Second)
 
-	time.Sleep(time.Second)
-	fmt.Println(server.kv.data)
+		value, err := client.Get(context.Background(), fmt.Sprintf("first_name_%d", i))
+		if err != nil {
+			slog.Error("error calling GET", "err", err)
+		}
+		fmt.Println("got: ", value)
+	}
 }

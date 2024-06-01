@@ -3,8 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"io"
-	"log"
 	"net"
 
 	"github.com/tidwall/resp"
@@ -12,37 +10,47 @@ import (
 
 type Client struct {
 	Addr string
-	Conn net.Conn
 }
 
 func New(addr string) *Client {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	return &Client{
 		Addr: addr,
-		Conn: conn,
 	}
 }
 
 func (c *Client) Set(ctx context.Context, key, value string) error {
+	conn, err := net.Dial("tcp", c.Addr)
+	if err != nil {
+		return err
+	}
+
 	var buf bytes.Buffer
 
 	wr := resp.NewWriter(&buf)
 	wr.WriteArray([]resp.Value{resp.StringValue("SET"), resp.StringValue(key), resp.StringValue(value)})
 
-	_, err := io.Copy(c.Conn, &buf)
+	_, err = conn.Write(buf.Bytes())
 	return err
 }
 
-func (c *Client) Get(ctx context.Context, key string) error {
+func (c *Client) Get(ctx context.Context, key string) (string, error) {
+	conn, err := net.Dial("tcp", c.Addr)
+	if err != nil {
+		return "", err
+	}
+
 	var buf bytes.Buffer
 
 	wr := resp.NewWriter(&buf)
-	wr.WriteArray([]resp.Value{resp.StringValue("SET"), resp.StringValue(key)})
+	wr.WriteArray([]resp.Value{resp.StringValue("GET"), resp.StringValue(key)})
 
-	_, err := io.Copy(c.Conn, &buf)
-	return err
+	_, err = conn.Write(buf.Bytes())
+	if err != nil {
+		return "", err
+	}
+
+	b := make([]byte, 1024)
+	n, err := conn.Read(b)
+
+	return string(b[:n]), err
 }
