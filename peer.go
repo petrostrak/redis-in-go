@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -33,27 +32,23 @@ func (p *Peer) read() error {
 			log.Fatal(err)
 		}
 
+		var cmd Commander
 		if v.Type() == resp.Array {
-			for _, val := range v.Array() {
-				switch val.String() {
-				case CommandGET:
-					if len(v.Array()) != 2 {
-						return fmt.Errorf("invalid get command")
-					}
-					cmd := SetCommand{
-						key: v.Array()[1].Bytes(),
-					}
-					fmt.Printf("GET cmd: %+v\n", cmd)
-				case CommandSET:
-					if len(v.Array()) != 3 {
-						return fmt.Errorf("invalid set command")
-					}
-					cmd := SetCommand{
-						key: v.Array()[1].Bytes(),
-						val: v.Array()[2].Bytes(),
-					}
-					fmt.Printf("SET cmd: %+v\n", cmd)
+			rawCMD := v.Array()[0]
+			switch rawCMD.String() {
+			case CommandGET:
+				cmd = SetCommand{
+					key: v.Array()[1].Bytes(),
 				}
+			case CommandSET:
+				cmd = SetCommand{
+					key: v.Array()[1].Bytes(),
+					val: v.Array()[2].Bytes(),
+				}
+			}
+			p.msgChan <- Message{
+				cmd:  cmd,
+				peer: p,
 			}
 		}
 	}
