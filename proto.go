@@ -35,7 +35,6 @@ func parseCommand(msg string) (Commander, error) {
 			log.Fatal(err)
 		}
 
-		var cmd Commander
 		if v.Type() == resp.Array {
 			for _, val := range v.Array() {
 				switch val.String() {
@@ -43,7 +42,7 @@ func parseCommand(msg string) (Commander, error) {
 					if len(v.Array()) != 2 {
 						return nil, fmt.Errorf("invalid get command")
 					}
-					cmd = SetCommand{
+					cmd := SetCommand{
 						key: v.Array()[1].Bytes(),
 					}
 					return cmd, nil
@@ -51,7 +50,7 @@ func parseCommand(msg string) (Commander, error) {
 					if len(v.Array()) != 3 {
 						return nil, fmt.Errorf("invalid set command")
 					}
-					cmd = SetCommand{
+					cmd := SetCommand{
 						key: v.Array()[1].Bytes(),
 						val: v.Array()[2].Bytes(),
 					}

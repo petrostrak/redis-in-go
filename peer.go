@@ -1,7 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"log"
 	"net"
+
+	"github.com/tidwall/resp"
 )
 
 type Peer struct {
@@ -17,19 +22,42 @@ func NewPeer(conn net.Conn, msgChan chan Message) *Peer {
 }
 
 func (p *Peer) read() error {
-	buf := make([]byte, 1024)
+	rd := resp.NewReader(p.conn)
+
 	for {
-		n, err := p.conn.Read(buf)
-		if err != nil {
-			return err
+		v, _, err := rd.ReadValue()
+		if err == io.EOF {
+			break
 		}
-		msg := make([]byte, n)
-		copy(msg, buf[:n])
-		p.msgChan <- Message{
-			data: msg,
-			peer: p,
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if v.Type() == resp.Array {
+			for _, val := range v.Array() {
+				switch val.String() {
+				case CommandGET:
+					if len(v.Array()) != 2 {
+						return fmt.Errorf("invalid get command")
+					}
+					cmd := SetCommand{
+						key: v.Array()[1].Bytes(),
+					}
+					fmt.Printf("GET cmd: %+v\n", cmd)
+				case CommandSET:
+					if len(v.Array()) != 3 {
+						return fmt.Errorf("invalid set command")
+					}
+					cmd := SetCommand{
+						key: v.Array()[1].Bytes(),
+						val: v.Array()[2].Bytes(),
+					}
+					fmt.Printf("SET cmd: %+v\n", cmd)
+				}
+			}
 		}
 	}
+	return nil
 }
 
 func (p *Peer) Send(msg []byte) (int, error) {
