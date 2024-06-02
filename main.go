@@ -1,14 +1,11 @@
 package main
 
 import (
-	"context"
+	"flag"
 	"fmt"
 	"log"
 	"log/slog"
 	"net"
-	"time"
-
-	"github.com/petrostrak/redis-in-go/client"
 )
 
 const (
@@ -118,27 +115,12 @@ func (s *Server) handleMsg(msg Message) error {
 }
 
 func main() {
-	server := NewServer(Config{})
+	addr := flag.String("addr", defaultListenAddr, "listen address of the redis server")
+	flag.Parse()
 
-	go func() {
-		log.Fatal(server.Start())
-	}()
-	time.Sleep(time.Second)
+	server := NewServer(Config{
+		ListenAddr: *addr,
+	})
 
-	client, err := client.New("localhost:5001")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for i := 0; i < 10; i++ {
-		if err := client.Set(context.Background(), fmt.Sprintf("first_name_%d", i), fmt.Sprintf("last_name_%d", i)); err != nil {
-			slog.Error("error calling SET", "err", err)
-		}
-
-		value, err := client.Get(context.Background(), fmt.Sprintf("first_name_%d", i))
-		if err != nil {
-			slog.Error("error calling GET", "err", err)
-		}
-		fmt.Println("got: ", value)
-	}
+	log.Fatal(server.Start())
 }
