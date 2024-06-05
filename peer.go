@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -9,38 +10,44 @@ import (
 )
 
 type Peer struct {
-	conn    net.Conn
-	msgChan chan Message
-	delChan chan *Peer
+	conn  net.Conn
+	msgCh chan Message
+	delCh chan *Peer
 }
 
-func NewPeer(conn net.Conn, msgChan chan Message, delChan chan *Peer) *Peer {
+func (p *Peer) Send(msg []byte) (int, error) {
+	return p.conn.Write(msg)
+}
+
+func NewPeer(conn net.Conn, msgCh chan Message, delCh chan *Peer) *Peer {
 	return &Peer{
-		conn:    conn,
-		msgChan: msgChan,
-		delChan: delChan,
+		conn:  conn,
+		msgCh: msgCh,
+		delCh: delCh,
 	}
 }
 
-func (p *Peer) read() error {
+func (p *Peer) readLoop() error {
 	rd := resp.NewReader(p.conn)
-
 	for {
 		v, _, err := rd.ReadValue()
 		if err == io.EOF {
-			p.delChan <- p
+			p.delCh <- p
 			break
 		}
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		var cmd Commander
+		var cmd Command
 		if v.Type() == resp.Array {
 			rawCMD := v.Array()[0]
 			switch rawCMD.String() {
+			case CommandClient:
+				cmd = ClientCommand{
+					value: v.Array()[1].String(),
+				}
 			case CommandGET:
-				cmd = SetCommand{
+				cmd = GetCommand{
 					key: v.Array()[1].Bytes(),
 				}
 			case CommandSET:
@@ -48,16 +55,18 @@ func (p *Peer) read() error {
 					key: v.Array()[1].Bytes(),
 					val: v.Array()[2].Bytes(),
 				}
+			case CommandHELLO:
+				cmd = HelloCommand{
+					value: v.Array()[1].String(),
+				}
+			default:
+				fmt.Println("got this unhandled command", rawCMD)
 			}
-			p.msgChan <- Message{
+			p.msgCh <- Message{
 				cmd:  cmd,
 				peer: p,
 			}
 		}
 	}
 	return nil
-}
-
-func (p *Peer) Send(msg []byte) (int, error) {
-	return p.conn.Write(msg)
 }
