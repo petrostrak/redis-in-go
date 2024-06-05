@@ -4,19 +4,23 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"testing"
 	"time"
 )
 
 func TestNewClients(t *testing.T) {
 	nClients := 10
+	var wg sync.WaitGroup
 
+	wg.Add(nClients)
 	for i := 0; i < nClients; i++ {
 		go func(it int) {
 			c, err := New("localhost:5001")
 			if err != nil {
 				log.Fatal(err)
 			}
+			defer c.Close()
 
 			key := fmt.Sprintf("client_foo_%d", it)
 			val := fmt.Sprintf("client_bar_%d", it)
@@ -29,10 +33,11 @@ func TestNewClients(t *testing.T) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("client %s got this val back =>", value)
+			fmt.Printf("client %d got this val back => %s\n", it, value)
+			wg.Done()
 		}(i)
 	}
-
+	wg.Wait()
 }
 
 func testnewclient(t *testing.T) {
