@@ -11,12 +11,14 @@ import (
 type Peer struct {
 	conn    net.Conn
 	msgChan chan Message
+	delChan chan *Peer
 }
 
-func NewPeer(conn net.Conn, msgChan chan Message) *Peer {
+func NewPeer(conn net.Conn, msgChan chan Message, delChan chan *Peer) *Peer {
 	return &Peer{
 		conn:    conn,
 		msgChan: msgChan,
+		delChan: delChan,
 	}
 }
 
@@ -26,6 +28,7 @@ func (p *Peer) read() error {
 	for {
 		v, _, err := rd.ReadValue()
 		if err == io.EOF {
+			p.delChan <- p
 			break
 		}
 		if err != nil {
